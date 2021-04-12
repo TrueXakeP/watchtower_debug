@@ -1,0 +1,76 @@
+version: "3.7"
+
+services:
+
+  db:
+    container_name: db
+    image: postgis/postgis:12-3.0-alpine
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: extremly_secure_password
+    ports:
+      - "5432:5432"
+    restart: always
+    networks:
+      - mynetwork
+    labels:
+      - "com.centurylinklabs.watchtower.scope=external"
+
+  redis:
+    container_name: redis
+    image: "redis:6.2-alpine"
+    ports:
+      - "6379:6379"
+    restart: always
+    networks:
+      - mynetwork
+    labels:
+      - "com.centurylinklabs.watchtower.scope=external"
+
+  django:
+    container_name: django
+    image: localhost:5000/testapp/django:latest
+    ports:
+      - "9000:9000"
+    restart: always
+    networks:
+      - mynetwork
+    depends_on:
+      - db
+      - redis
+    labels:
+      com.centurylinklabs.watchtower.scope: internal
+      com.centurylinklabs.watchtower.depends-on: nginx
+
+  nginx:
+    container_name: nginx
+    image: nginx:1.19-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    restart: always
+    networks:
+      - mynetwork
+    depends_on: 
+      - django
+
+  watchtower:
+    container_name: watchtower
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 10 --scope internal --cleanup
+    restart: always
+    networks:
+      - mynetwork
+    labels:
+      - "com.centurylinklabs.watchtower.scope=external"
+
+networks:
+  mynetwork:
+    name: mynetwork
+      
