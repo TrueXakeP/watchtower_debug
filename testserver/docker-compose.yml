@@ -63,12 +63,36 @@ services:
     image: containrrr/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 10 --scope internal --cleanup
+    command: --interval 10 --scope internal --no-restart
     restart: always
     networks:
       - mynetwork
     labels:
       - "com.centurylinklabs.watchtower.scope=external"
+
+  watchtower-ext:
+    container_name: watchtower-ext
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --scope external --cleanup
+    restart: always
+    networks:
+      - mynetwork
+    labels:
+      - "com.centurylinklabs.watchtower.scope=external"
+
+  watchtower-udpate:
+    container_name: watchtower-upd
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 10 --no-pull --cleanup
+    restart: always
+    depends_on:
+      - watchtower
+    networks:
+      - mynetwork
 
 networks:
   mynetwork:
