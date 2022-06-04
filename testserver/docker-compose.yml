@@ -30,6 +30,13 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.scope=external"
 
+  django-base:
+    image: localhost:5000/testapp/django:latest
+    profile:
+      - 'update-only' # prevents auto-start
+    labels:
+      com.centurylinklabs.watchtower.scope: internal-pull
+      
   django:
     container_name: django
     image: localhost:5000/testapp/django:latest
@@ -42,8 +49,14 @@ services:
       - db
       - redis
     labels:
-      com.centurylinklabs.watchtower.scope: internal
-      com.centurylinklabs.watchtower.depends-on: nginx
+      com.centurylinklabs.watchtower.scope: local-update
+
+  nginx-base:
+    image: nginx:1.19-alpine
+    profile:
+      - 'update-only'
+    labels:
+      com.centurylinklabs.watchtower.scope: external
 
   nginx:
     container_name: nginx
@@ -57,42 +70,47 @@ services:
       - mynetwork
     depends_on: 
       - django
+    labels:
+      com.centurylinklabs.watchtower.scope: local-update
+      com.centurylinklabs.watchtower.depends-on: django
 
-  watchtower:
+  watchtower-int:
     container_name: watchtower
     image: containrrr/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 10 --scope internal --no-restart
+    command: --interval 10 --scope internal-pull --include-stopped --no-restart
     restart: always
     networks:
       - mynetwork
     labels:
-      - "com.centurylinklabs.watchtower.scope=external"
+      - "com.centurylinklabs.watchtower.scope=internal-pull"
 
   watchtower-ext:
     container_name: watchtower-ext
     image: containrrr/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --scope external --cleanup
+    command: --scope external --include-stopped --cleanup
     restart: always
     networks:
       - mynetwork
     labels:
       - "com.centurylinklabs.watchtower.scope=external"
 
-  watchtower-udpate:
+  watchtower-local:
     container_name: watchtower-upd
     image: containrrr/watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 10 --no-pull --cleanup
+    command: --interval 10 --scope local-update --no-pull --cleanup
     restart: always
     depends_on:
-      - watchtower
+      - watchtower-int
     networks:
       - mynetwork
+    labels:
+      - "com.centurylinklabs.watchtower.scope=local-update"
 
 networks:
   mynetwork:
